@@ -1,0 +1,20 @@
+{
+  "name": "rcb-ticket-monitor",
+  "version": "3.0.0",
+  "description": "RCB Ticket Monitor — alerts via Telegram when match tickets drop",
+  "main": "cron.js",
+  "type": "module",
+  "scripts": {
+    "start": "node cron.js",
+    "test": "echo \"No tests\" && exit 0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "node-telegram-bot-api": "^0.65.0",
+    "puppeteer": "^22.6.0"
+  }
+}

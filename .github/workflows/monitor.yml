@@ -1,0 +1,46 @@
+name: RCB Ticket Monitor
+
+on:
+  schedule:
+    # Runs every 5 minutes. The script itself polls for 4.5 min inside each run.
+    # Combined: near real-time coverage with ≤20s detection window.
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+jobs:
+  check-tickets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6  # Safety net: kill if script hangs beyond 6 min
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore State Cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./state.json
+          key: rcb-ticket-state-v5-${{ github.run_id }}
+          restore-keys: |
+            rcb-ticket-state-v5-
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Real-Time Monitor
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node cron.js
+
+      - name: Save State Cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ./state.json
+          key: rcb-ticket-state-v5-${{ github.run_id }}
