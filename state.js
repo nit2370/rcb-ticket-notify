@@ -8,7 +8,7 @@ export function loadState() {
         if (fs.existsSync(STATE_FILE)) {
             return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
         }
-    } catch (_) { /* ignore corrupt state */ }
+    } catch (_) {}
     return {};
 }
 
@@ -16,9 +16,7 @@ export function saveState(state) {
     fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
-/**
- * Get state for a specific match, creating default if not exists.
- */
+// Get state for a specific match, creating default if not exists.
 export function getMatchState(state, matchId) {
     if (!state[matchId]) {
         state[matchId] = {
@@ -31,10 +29,7 @@ export function getMatchState(state, matchId) {
     return state[matchId];
 }
 
-/**
- * Determine if we should send a notification based on the status transition.
- * Returns: 'ALERT_AVAILABLE' | 'ALERT_SOLD_OUT' | 'ALERT_BACK_AVAILABLE' | null
- */
+// Determine if we should send a notification based on the status transition.
 export function shouldAlert(matchState, newStatus) {
     const old = matchState.status;
 
@@ -56,9 +51,7 @@ export function shouldAlert(matchState, newStatus) {
     return null;
 }
 
-/**
- * Apply status update after notification decision.
- */
+// Apply status update after notification decision.
 export function updateMatchState(matchState, newStatus, alerted) {
     matchState.status = newStatus;
     matchState.lastChecked = new Date().toISOString();

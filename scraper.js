@@ -25,14 +25,8 @@ function randomBetween(a, b) { return Math.floor(Math.random() * (b - a + 1)) + 
 function randomUA() { return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]; }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ─── PRIMARY: API-BASED SCRAPING (lightweight, fast, reliable) ─────────────
+// API Based Scraping
 
-/**
- * Hits the TicketGenie API and returns a list of matches with ticket status.
- * Each match in the result gets its own status — so we can alert per-match.
- *
- * Returns: { method: 'API', matches: [ { id, name, date, venue, status, link }, ... ] }
- */
 async function scrapeViaAPI() {
     const jitter = randomBetween(500, 2000);
     await sleep(jitter);
@@ -63,9 +57,6 @@ async function scrapeViaAPI() {
     }
 
     // Parse each match from the API response
-    // Actual API fields: event_Name, event_Display_Date, event_Date, venue_Name,
-    //   city_Name, team_1, team_2, event_Price_Range, event_Button_Text,
-    //   team_1_Logo, team_2_Logo, event_Code, event_Group_Code
     const matches = data.result.map(event => {
         const name  = event.event_Name || 'Unknown Match';
         const id    = slugify(name);
@@ -92,7 +83,7 @@ async function scrapeViaAPI() {
     return { method: 'API', matches, pageStatus: STATUS.AVAILABLE };
 }
 
-// ─── FALLBACK: DOM-BASED SCRAPING (if API is down) ─────────────────────────
+// DOM-BASED SCRAPING (if API is down)
 
 async function scrapeViaDOM() {
     const jitter = randomBetween(800, 2500);
@@ -146,8 +137,6 @@ async function scrapeViaDOM() {
     }
 }
 
-// ─── PUBLIC API ────────────────────────────────────────────────────────────
-
 /**
  * Main scrape function. Tries API first, falls back to DOM if API fails.
  * Returns: { method, matches[], pageStatus, error? }
@@ -157,7 +146,6 @@ export async function scrape({ retries = 2 } = {}) {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const result = await scrapeViaAPI();
-            console.log(`  ✅ API scrape succeeded (attempt ${attempt}): ${result.matches.length} match(es) found`);
             return result;
         } catch (err) {
             console.warn(`  ⚠️  API attempt ${attempt} failed: ${err.message}`);
@@ -166,11 +154,9 @@ export async function scrape({ retries = 2 } = {}) {
     }
 
     // Fallback to DOM scraping
-    console.log('  🔄 Falling back to DOM scraping...');
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             const result = await scrapeViaDOM();
-            console.log(`  ✅ DOM scrape succeeded (attempt ${attempt}): pageStatus=${result.pageStatus}`);
             return result;
         } catch (err) {
             console.warn(`  ⚠️  DOM attempt ${attempt} failed: ${err.message}`);
@@ -180,8 +166,6 @@ export async function scrape({ retries = 2 } = {}) {
 
     return { method: 'FAILED', matches: [], pageStatus: STATUS.ERROR, error: 'All scrape methods failed' };
 }
-
-// ─── UTILS ─────────────────────────────────────────────────────────────────
 
 function slugify(str) {
     return str.toLowerCase()

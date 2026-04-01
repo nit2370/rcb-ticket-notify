@@ -55,7 +55,6 @@ export async function sendAvailableAlert(match) {
         `_Book immediately — tickets sell out in minutes!_ 🔥`;
 
     const ok = await broadcast(msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
-    console.log(`📩 [LIVE] Alert ${ok ? 'sent' : 'FAILED'} for: ${match.name}`);
     return ok;
 }
 
@@ -71,7 +70,6 @@ export async function sendSoldOutAlert(match) {
         `⏰ ${istNow()} IST`;
 
     const ok = await broadcast(msg, { parse_mode: 'Markdown' });
-    console.log(`📩 [SOLD OUT] Alert ${ok ? 'sent' : 'FAILED'} for: ${match.name}`);
     return ok;
 }
 
@@ -89,7 +87,6 @@ export async function sendBackAvailableAlert(match) {
         `⏰ *Detected:* ${istNow()} IST`;
 
     const ok = await broadcast(msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
-    console.log(`📩 [BACK IN STOCK] Alert ${ok ? 'sent' : 'FAILED'} for: ${match.name}`);
     return ok;
 }
 
@@ -103,5 +100,4 @@ export async function sendErrorAlert(errorMessage) {
         `⏰ ${istNow()} IST`;
 
     await broadcast(msg, { parse_mode: 'Markdown' });
-    console.log(`📩 [ERROR] Alert sent to ${CHAT_IDS.length} chat(s).`);
 }
