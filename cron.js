@@ -41,11 +41,40 @@ async function runPollCycle(state) {
         return;
     }
 
-    // ── No matches in API → page says "Tickets not available" ──
+    // ── No matches in API → use consecutive-miss counter before resetting state ──
     if (result.matches.length === 0) {
-        log('  ℹ️  No matches with tickets. "Tickets not available" state.');
-        // Don't touch per-match state here — we only update when we SEE a match
+        const meta = state.meta || {};
+        meta.emptyCount = (meta.emptyCount || 0) + 1;
+        state.meta = meta;
+
+        if (meta.emptyCount < 3) {
+            // Could be a transient server hiccup — don't reset yet
+            log(`  ℹ️  Empty API response (miss #${meta.emptyCount}/3) — waiting to confirm before state reset.`);
+            saveState(state); // persist the updated emptyCount
+            return;
+        }
+
+        // 3 consecutive empty responses → tickets genuinely gone
+        log('  ℹ️  3 consecutive empty responses confirmed. Marking AVAILABLE → NOT_AVAILABLE.');
+        meta.emptyCount = 0;
+        let changed = false;
+        for (const [key, ms] of Object.entries(state)) {
+            if (key === 'meta') continue;
+            if (ms.status === 'AVAILABLE') {
+                ms.status = 'NOT_AVAILABLE';
+                ms.alertedAvailable = false;
+                ms.lastChecked = new Date().toISOString();
+                changed = true;
+            }
+        }
+        if (changed) saveState(state);
         return;
+    }
+
+    // ── Matches found → reset the transient-empty counter ──
+    if (state.meta?.emptyCount) {
+        state.meta.emptyCount = 0;
+        log('  ✅ Non-empty response received — emptyCount reset.');
     }
 
     // ── Process each match individually ──
@@ -59,17 +88,22 @@ async function runPollCycle(state) {
             log(`  🔔 Match "${match.name}" → ${alertType}`);
 
             try {
-                if (alertType === 'ALERT_AVAILABLE')      await sendAvailableAlert(match);
-                if (alertType === 'ALERT_BACK_AVAILABLE')  await sendBackAvailableAlert(match);
-                if (alertType === 'ALERT_SOLD_OUT')        await sendSoldOutAlert(match);
+                if (alertType === 'ALERT_AVAILABLE')      delivered = await sendAvailableAlert(match);
+                if (alertType === 'ALERT_BACK_AVAILABLE')  delivered = await sendBackAvailableAlert(match);
+                if (alertType === 'ALERT_SOLD_OUT')        delivered = await sendSoldOutAlert(match);
             } catch (err) {
                 log(`  ❌ Failed to send Telegram alert: ${err.message}`);
             }
 
-            updateMatchState(ms, match.status, alertType);
-            stateChanged = true;
+            // Only update state if alert was actually delivered
+            if (delivered) {
+                updateMatchState(ms, match.status, alertType);
+                stateChanged = true;
+            } 
+            else {
+                log(`  ⚠️ Alert not delivered, will retry next cycle.`);
+            }
         } else {
-            // Status unchanged — just update lastChecked
             ms.lastChecked = new Date().toISOString();
             log(`  ✅ Match "${match.name}" → ${match.status} (no change, no alert)`);
         }

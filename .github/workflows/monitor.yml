@@ -7,6 +7,10 @@ on:
     - cron: '*/5 * * * *'
   workflow_dispatch: # Manual trigger from GitHub UI
 
+concurrency:
+  group: rcb-monitor
+  cancel-in-progress: false
+
 jobs:
   check-tickets:
     runs-on: ubuntu-latest

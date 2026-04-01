@@ -79,9 +79,11 @@ async function scrapeViaAPI() {
         const buttonText = (event.event_Button_Text || '').toLowerCase();
 
         // Determine per-match status from the button text
-        let status = STATUS.AVAILABLE;
+        let status = STATUS.NOT_AVAILABLE; // default unknown to NOT_AVAILABLE
         if (buttonText.includes('sold out') || buttonText.includes('housefull')) {
             status = STATUS.SOLD_OUT;
+        } else if (buttonText.includes('buy') || buttonText.includes('book') || buttonText.includes('get ticket') || buttonText.includes('available')) {
+            status = STATUS.AVAILABLE;
         }
 
         return { id, name, date, venue, price, team1, team2, status, link: TICKET_PAGE };

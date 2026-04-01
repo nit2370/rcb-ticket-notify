@@ -13,14 +13,22 @@ function getBot() {
 async function broadcast(msg, options) {
     if (!CHAT_IDS.length) {
         console.warn('⚠️ No TELEGRAM_CHAT_ID configured!');
-        return;
+        return false;
     }
     const bot = getBot();
-    await Promise.allSettled(
-        CHAT_IDS.map(chatId => bot.sendMessage(chatId, msg, options).catch(err => {
-            console.error(`❌ Failed to send to ${chatId}:`, err.message);
-        }))
+    const results = await Promise.allSettled(
+        CHAT_IDS.map(chatId => bot.sendMessage(chatId, msg, options))
     );
+
+    let anySuccess = false;
+    for (let i = 0; i < results.length; i++) {
+        if (results[i].status === 'fulfilled') {
+            anySuccess = true;
+        } else {
+            console.error(`❌ Failed to send to ${CHAT_IDS[i]}:`, results[i].reason?.message);
+        }
+    }
+    return anySuccess;
 }
 
 function istNow() {
@@ -46,8 +54,9 @@ export async function sendAvailableAlert(match) {
         `⏰ *Detected:* ${istNow()} IST\n\n` +
         `_Book immediately — tickets sell out in minutes!_ 🔥`;
 
-    await broadcast(msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
-    console.log(`📩 [LIVE] Alert sent to ${CHAT_IDS.length} chat(s): ${match.name}`);
+    const ok = await broadcast(msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
+    console.log(`📩 [LIVE] Alert ${ok ? 'sent' : 'FAILED'} for: ${match.name}`);
+    return ok;
 }
 
 export async function sendSoldOutAlert(match) {
@@ -61,8 +70,9 @@ export async function sendSoldOutAlert(match) {
         `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `⏰ ${istNow()} IST`;
 
-    await broadcast(msg, { parse_mode: 'Markdown' });
-    console.log(`📩 [SOLD OUT] Alert sent to ${CHAT_IDS.length} chat(s): ${match.name}`);
+    const ok = await broadcast(msg, { parse_mode: 'Markdown' });
+    console.log(`📩 [SOLD OUT] Alert ${ok ? 'sent' : 'FAILED'} for: ${match.name}`);
+    return ok;
 }
 
 export async function sendBackAvailableAlert(match) {
@@ -78,8 +88,9 @@ export async function sendBackAvailableAlert(match) {
         `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `⏰ *Detected:* ${istNow()} IST`;
 
-    await broadcast(msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
-    console.log(`📩 [BACK IN STOCK] Alert sent to ${CHAT_IDS.length} chat(s): ${match.name}`);
+    const ok = await broadcast(msg, { parse_mode: 'Markdown', disable_web_page_preview: false });
+    console.log(`📩 [BACK IN STOCK] Alert ${ok ? 'sent' : 'FAILED'} for: ${match.name}`);
+    return ok;
 }
 
 export async function sendErrorAlert(errorMessage) {

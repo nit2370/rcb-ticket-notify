@@ -20,6 +20,8 @@
 | 🚫 **No Duplicate Spam** | Per-match state tracking — alerts ONLY when a match's status **changes** |
 | ⚡ **Near Real-Time** | Polls every 15-25 seconds for 4.5 minutes per run (≤25s detection window) |
 | 🕵️ **Bot Evasion** | Rotating User-Agents, random delays, anti-fingerprinting headers |
+| 🔄 **Back in Stock** | Detects when sold-out tickets reappear (batch releases) |
+| ✅ **Delivery Tracking** | Only updates state if Telegram alert was actually delivered. Failed alerts retry next cycle. |
 | 🆓 **100% Free** | Runs on GitHub Actions (unlimited for public repos) |
 
 ---
@@ -182,7 +184,7 @@ Edit `notifier.js` — each `send*Alert()` function builds a Markdown message yo
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/rcb-ticket-notify.git
+git clone https://github.com/nit2370/rcb-ticket-notify.git
 cd rcb-ticket-notify
 
 # Install dependencies
@@ -207,7 +209,7 @@ GitHub Actions free-tier cron is notoriously unreliable — delays of 30 minutes
 
 <details>
 <summary><b>Will I get duplicate alerts?</b></summary>
-No. The monitor tracks per-match state in <code>state.json</code>. You only get alerted when a match's status <b>changes</b> (e.g., NOT_AVAILABLE → AVAILABLE). If tickets remain available across multiple runs, you'll only get one alert.
+No. The monitor tracks per-match state in <code>state.json</code> and uses a concurrency guard to prevent overlapping runs. You only get alerted when a match's status <b>changes</b> (e.g., NOT_AVAILABLE → AVAILABLE). If tickets remain available across multiple runs, you'll only get one alert. If a Telegram alert fails to deliver, state is NOT updated so it retries next cycle.
 </details>
 
 <details>
