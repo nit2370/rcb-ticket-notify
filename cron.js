@@ -83,6 +83,7 @@ async function runPollCycle(state) {
         if (alertType) {
             log(`  🔔 Match "${match.name}" → ${alertType}`);
 
+            let delivered = false;
             try {
                 if (alertType === 'ALERT_AVAILABLE') delivered = await sendAvailableAlert(match);
                 if (alertType === 'ALERT_BACK_AVAILABLE') delivered = await sendBackAvailableAlert(match);
