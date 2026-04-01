@@ -231,7 +231,7 @@ Yes. Tokens are stored as <b>GitHub Repository Secrets</b> (encrypted, invisible
 
 ## 📄 License
 
-ISC — Use it however you want. If this helps you grab those Chinnaswamy tickets, a ⭐ on the repo would be awesome!
+MIT
 
 ---
 
