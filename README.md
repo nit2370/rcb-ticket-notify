@@ -5,7 +5,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-20+-green?logo=node.js)
 ![GitHub Actions](https://img.shields.io/badge/Runs%20on-GitHub%20Actions-blue?logo=github)
 ![Telegram](https://img.shields.io/badge/Alerts%20via-Telegram-26A5E4?logo=telegram)
-![License](https://img.shields.io/badge/License-ISC-yellow)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ---
 
