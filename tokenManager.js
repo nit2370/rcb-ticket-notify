@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 
 const TICKET_PAGE  = 'https://shop.royalchallengers.com/ticket';
-const TOKEN_TTL_MS = 50 * 60 * 1000; // 50 min — tokens seem to last ~1 hour
+const TOKEN_TTL_MS = 50 * 60 * 1000;
 
 let _cachedToken    = null;
 let _tokenFetchedAt = null;
@@ -33,45 +33,70 @@ export async function getAuthToken() {
 
         let capturedToken = null;
 
-        // Intercept every outgoing request and grab the first Bearer token we see
-        await page.setRequestInterception(true);
-        page.on('request', req => {
-            const auth = req.headers()['authorization'];
+        // Use CDP to passively observe outgoing request headers (no interception needed)
+        const client = await page.createCDPSession();
+        await client.send('Network.enable');
+        client.on('Network.requestWillBeSent', event => {
+            const auth = event.request.headers?.Authorization || event.request.headers?.authorization;
             if (auth && auth.startsWith('Bearer ') && !capturedToken) {
                 capturedToken = auth;
+                console.warn(`[tokenManager] Token captured from: ${event.request.url}`);
             }
-            req.continue();
         });
 
+        console.warn('[tokenManager] Navigating to ticket page...');
         await page.goto(TICKET_PAGE, { waitUntil: 'networkidle2', timeout: 45000 });
+        console.warn(`[tokenManager] Page loaded. Token after load: ${capturedToken ? 'found' : 'not found'}`);
 
-        // Fallback: check localStorage / sessionStorage for a stored token
+        // Check localStorage / sessionStorage for stored token
         if (!capturedToken) {
             capturedToken = await page.evaluate(() => {
-                const keys = ['token', 'authToken', 'auth_token', 'access_token', 'bearerToken'];
+                const keys = [
+                    'token', 'authToken', 'auth_token', 'access_token',
+                    'bearerToken', 'tg_token', 'userToken', 'jwt',
+                ];
                 for (const key of keys) {
                     const val = localStorage.getItem(key) ?? sessionStorage.getItem(key);
                     if (val) return val.startsWith('Bearer ') ? val : `Bearer ${val}`;
                 }
+                // Also scan all keys for anything that looks like a JWT/bearer
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    const val = localStorage.getItem(key);
+                    if (val && (val.startsWith('Bearer ') || val.split('.').length === 3)) {
+                        return val.startsWith('Bearer ') ? val : `Bearer ${val}`;
+                    }
+                }
                 return null;
             });
+            if (capturedToken) console.warn('[tokenManager] Token found in storage.');
         }
 
-        // Fallback: click the first "Buy Tickets" button to trigger an authenticated API call
+        // Click the "BUY TICKETS" button to trigger an authenticated API call
         if (!capturedToken) {
-            try {
-                await page.click('button');
-                await new Promise(r => setTimeout(r, 3000));
-            } catch { /* button may not exist — safe to ignore */ }
+            console.warn('[tokenManager] Trying to click Buy Tickets button...');
+            const clicked = await page.evaluate(() => {
+                const all = Array.from(document.querySelectorAll('button, a, [role="button"]'));
+                const btn = all.find(el => /buy|book|ticket/i.test(el.textContent?.trim()));
+                if (btn) { btn.click(); return btn.textContent?.trim(); }
+                return null;
+            });
+            console.warn(`[tokenManager] Clicked: ${clicked ?? 'nothing found'}`);
+            // Wait for any triggered network requests
+            await new Promise(r => setTimeout(r, 5000));
+            console.warn(`[tokenManager] Token after click: ${capturedToken ? 'found' : 'still not found'}`);
         }
 
         if (capturedToken) {
             _cachedToken    = capturedToken;
             _tokenFetchedAt = Date.now();
+        } else {
+            console.error('[tokenManager] Could not capture auth token — stands will be omitted.');
         }
 
         return capturedToken;
-    } catch {
+    } catch (err) {
+        console.error(`[tokenManager] Error: ${err.message}`);
         return null;
     } finally {
         if (browser) await browser.close().catch(() => {});
