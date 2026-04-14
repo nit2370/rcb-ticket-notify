@@ -37,6 +37,7 @@
 🆚 Match: RCB vs Sunrisers Hyderabad
 📅 Date: 28 Mar 2026
 🏟️ Venue: M. Chinnaswamy Stadium
+💰 Price: 3750 - 47000
 
 🔗 👉 BOOK NOW
 ━━━━━━━━━━━━━━━━━━━━━━━━
