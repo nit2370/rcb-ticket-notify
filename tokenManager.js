@@ -7,6 +7,13 @@ let _cachedToken    = null;
 let _tokenFetchedAt = null;
 
 export async function getAuthToken() {
+    // 1. Prioritize explicitly provided token from environment/secrets
+    if (process.env.TG_AUTH_TOKEN) {
+        const t = process.env.TG_AUTH_TOKEN.trim();
+        return t.startsWith('Bearer ') ? t : `Bearer ${t}`;
+    }
+
+    // 2. Use cached token if valid
     if (_cachedToken && _tokenFetchedAt && Date.now() - _tokenFetchedAt < TOKEN_TTL_MS) {
         return _cachedToken;
     }
