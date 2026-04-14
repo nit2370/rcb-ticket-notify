@@ -2,6 +2,7 @@
 
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
+import { getAuthToken } from './tokenManager.js';
 
 const TICKET_API   = 'https://rcbscaleapi.ticketgenie.in/ticket/eventlist/O';
 const STANDS_API   = 'https://rcbscaleapi.ticketgenie.in/ticket/standslist';
@@ -28,15 +29,19 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function fetchStandPrices(eventCode) {
     try {
+        const token = await getAuthToken();
+        const headers = {
+            'User-Agent': randomUA(),
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Content-Type': 'application/json',
+            'Origin': 'https://shop.royalchallengers.com',
+            'Referer': 'https://shop.royalchallengers.com/',
+        };
+        if (token) headers['Authorization'] = token;
+
         const res = await fetch(`${STANDS_API}/${eventCode}`, {
-            headers: {
-                'User-Agent': randomUA(),
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Content-Type': 'application/json',
-                'Origin': 'https://shop.royalchallengers.com',
-                'Referer': 'https://shop.royalchallengers.com/',
-            },
+            headers,
             signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) return [];
