@@ -39,6 +39,12 @@ function istNow() {
     });
 }
 
+function formatStands(stands) {
+    if (!stands || stands.length === 0) return '';
+    const lines = stands.map(s => `  • ${s.name}: ₹${s.price.toLocaleString('en-IN')}`);
+    return `\n🎟️ *Available Stands:*\n${lines.join('\n')}\n`;
+}
+
 export async function sendAvailableAlert(match) {
     const link = match.link || TICKET_URL;
     const msg =
@@ -48,8 +54,8 @@ export async function sendAvailableAlert(match) {
         `🆚 *Match:* ${match.name}\n` +
         (match.date ? `📅 *Date:* ${match.date}\n` : '') +
         `🏟️ *Venue:* ${match.venue || 'M. Chinnaswamy Stadium'}\n` +
-        (match.price ? `💰 *Price:* ${match.price}\n` : '') +
-        `\n🔗 *[👉 BOOK NOW](${link})*\n` +
+        formatStands(match.stands) +
+        `\n🔗 *[👉 BOOK NOW](${link})*\n`+
         `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `⏰ *Detected:* ${istNow()} IST\n\n` +
         `_Book immediately — tickets sell out in minutes!_ 🔥`;
@@ -81,8 +87,9 @@ export async function sendBackAvailableAlert(match) {
         `♻️ Were sold out → NOW AVAILABLE AGAIN!\n\n` +
         `🆚 *Match:* ${match.name}\n` +
         (match.date ? `📅 *Date:* ${match.date}\n` : '') +
-        `🏟️ *Venue:* ${match.venue || 'M. Chinnaswamy Stadium'}\n\n` +
-        `🔗 *[👉 BOOK NOW](${link})*\n` +
+        `🏟️ *Venue:* ${match.venue || 'M. Chinnaswamy Stadium'}\n` +
+        formatStands(match.stands) +
+        `\n🔗 *[👉 BOOK NOW](${link})*\n`+
         `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `⏰ *Detected:* ${istNow()} IST`;
 

@@ -3,8 +3,9 @@
 import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 
-const TICKET_API  = 'https://rcbscaleapi.ticketgenie.in/ticket/eventlist/O';
-const TICKET_PAGE = 'https://shop.royalchallengers.com/ticket';
+const TICKET_API   = 'https://rcbscaleapi.ticketgenie.in/ticket/eventlist/O';
+const STANDS_API   = 'https://rcbscaleapi.ticketgenie.in/ticket/standslist';
+const TICKET_PAGE  = 'https://shop.royalchallengers.com/ticket';
 
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
@@ -25,7 +26,27 @@ function randomBetween(a, b) { return Math.floor(Math.random() * (b - a + 1)) + 
 function randomUA() { return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]; }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// API Based Scraping
+async function fetchStandPrices(eventCode) {
+    try {
+        const res = await fetch(`${STANDS_API}/${eventCode}`, {
+            headers: {
+                'User-Agent': randomUA(),
+                'Accept': 'application/json',
+                'Origin': 'https://shop.royalchallengers.com',
+                'Referer': 'https://shop.royalchallengers.com/',
+            },
+            signal: AbortSignal.timeout(10000),
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        if (data.status !== 'Success' || !data.result?.stands) return [];
+        return data.result.stands
+            .filter(s => s.stand_Status !== 'S' && s.price > 0)
+            .map(s => ({ name: s.stand_Name, price: s.price }));
+    } catch {
+        return [];
+    }
+}
 
 async function scrapeViaAPI() {
     const jitter = randomBetween(500, 2000);
@@ -56,29 +77,30 @@ async function scrapeViaAPI() {
         return { method: 'API', matches: [], pageStatus: STATUS.NOT_AVAILABLE };
     }
 
-    // Parse each match from the API response
-    const matches = data.result.map(event => {
+    const matches = await Promise.all(data.result.map(async event => {
         const name  = event.event_Name || 'Unknown Match';
         const id    = slugify(name);
         const date  = event.event_Display_Date || event.event_Date || '';
         const venue = event.venue_Name
             ? `${event.venue_Name}${event.city_Name ? ', ' + event.city_Name : ''}`
             : 'M. Chinnaswamy Stadium, Bengaluru';
-        const price = event.event_Price_Range || '';
         const team1 = event.team_1 || '';
         const team2 = event.team_2 || '';
         const buttonText = (event.event_Button_Text || '').toLowerCase();
 
-        // Determine per-match status from the button text
-        let status = STATUS.NOT_AVAILABLE; // default unknown to NOT_AVAILABLE
+        let status = STATUS.NOT_AVAILABLE;
         if (buttonText.includes('sold out') || buttonText.includes('housefull')) {
             status = STATUS.SOLD_OUT;
         } else if (buttonText.includes('buy') || buttonText.includes('book') || buttonText.includes('get ticket') || buttonText.includes('available')) {
             status = STATUS.AVAILABLE;
         }
 
-        return { id, name, date, venue, price, team1, team2, status, link: TICKET_PAGE };
-    });
+        const stands = status === STATUS.AVAILABLE
+            ? await fetchStandPrices(event.event_Code)
+            : [];
+
+        return { id, name, date, venue, team1, team2, status, stands, link: TICKET_PAGE };
+    }));
 
     return { method: 'API', matches, pageStatus: STATUS.AVAILABLE };
 }
