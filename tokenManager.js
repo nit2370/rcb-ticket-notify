@@ -15,12 +15,7 @@ export async function getAuthToken() {
     try {
         browser = await puppeteer.launch({
             headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-blink-features=AutomationControlled',
-            ],
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         });
 
         const page = await browser.newPage();
@@ -33,65 +28,90 @@ export async function getAuthToken() {
 
         let capturedToken = null;
 
-        // Use CDP to passively observe outgoing request headers (no interception needed)
+        // Passive CDP listener — survives SPA navigations on the same page object
         const client = await page.createCDPSession();
         await client.send('Network.enable');
         client.on('Network.requestWillBeSent', event => {
             const auth = event.request.headers?.Authorization || event.request.headers?.authorization;
             if (auth && auth.startsWith('Bearer ') && !capturedToken) {
                 capturedToken = auth;
-                console.warn(`[tokenManager] Token captured from: ${event.request.url}`);
+                console.warn(`[tokenManager] ✅ Token captured from: ${event.request.url}`);
             }
         });
 
-        console.warn('[tokenManager] Navigating to ticket page...');
+        console.warn('[tokenManager] Loading ticket page...');
         await page.goto(TICKET_PAGE, { waitUntil: 'networkidle2', timeout: 45000 });
-        console.warn(`[tokenManager] Page loaded. Token after load: ${capturedToken ? 'found' : 'not found'}`);
+        console.warn(`[tokenManager] Page loaded — token: ${capturedToken ? 'found' : 'not found yet'}`);
 
-        // Check localStorage / sessionStorage for stored token
+        // Find the first BUTTON element (not links) that contains "BUY" text
+        // Use elementHandle.click() so real mouse events fire
         if (!capturedToken) {
-            capturedToken = await page.evaluate(() => {
-                const keys = [
-                    'token', 'authToken', 'auth_token', 'access_token',
-                    'bearerToken', 'tg_token', 'userToken', 'jwt',
-                ];
-                for (const key of keys) {
-                    const val = localStorage.getItem(key) ?? sessionStorage.getItem(key);
-                    if (val) return val.startsWith('Bearer ') ? val : `Bearer ${val}`;
-                }
-                // Also scan all keys for anything that looks like a JWT/bearer
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    const val = localStorage.getItem(key);
-                    if (val && (val.startsWith('Bearer ') || val.split('.').length === 3)) {
-                        return val.startsWith('Bearer ') ? val : `Bearer ${val}`;
-                    }
-                }
-                return null;
+            console.warn('[tokenManager] Looking for BUY TICKETS button...');
+
+            const buyHandle = await page.evaluateHandle(() => {
+                // Only <button> elements, prioritising those with "buy" in text
+                const btns = Array.from(document.querySelectorAll('button'));
+                return btns.find(b => /\bbuy\b/i.test(b.textContent)) ?? null;
             });
-            if (capturedToken) console.warn('[tokenManager] Token found in storage.');
+
+            const element = buyHandle.asElement();
+            if (element) {
+                const txt = await element.evaluate(el => el.textContent.trim());
+                console.warn(`[tokenManager] Clicking: "${txt}"`);
+
+                // Navigate-safe click: start listening for navigation before clicking
+                const navPromise = page.waitForNavigation({
+                    waitUntil: 'networkidle2',
+                    timeout: 10000,
+                }).catch(() => null); // resolve null if no nav happens
+
+                await element.click();
+                await navPromise;
+
+                console.warn(`[tokenManager] After click — token: ${capturedToken ? 'found' : 'still not found'}`);
+
+                // Extra wait for SPA lazy-load requests
+                if (!capturedToken) {
+                    await new Promise(r => setTimeout(r, 4000));
+                    console.warn(`[tokenManager] After wait — token: ${capturedToken ? 'found' : 'still not found'}`);
+                }
+            } else {
+                console.warn('[tokenManager] No BUY button found on page.');
+            }
         }
 
-        // Click the "BUY TICKETS" button to trigger an authenticated API call
+        // Last resort: dump all localStorage / sessionStorage keys for debugging
         if (!capturedToken) {
-            console.warn('[tokenManager] Trying to click Buy Tickets button...');
-            const clicked = await page.evaluate(() => {
-                const all = Array.from(document.querySelectorAll('button, a, [role="button"]'));
-                const btn = all.find(el => /buy|book|ticket/i.test(el.textContent?.trim()));
-                if (btn) { btn.click(); return btn.textContent?.trim(); }
-                return null;
-            });
-            console.warn(`[tokenManager] Clicked: ${clicked ?? 'nothing found'}`);
-            // Wait for any triggered network requests
-            await new Promise(r => setTimeout(r, 5000));
-            console.warn(`[tokenManager] Token after click: ${capturedToken ? 'found' : 'still not found'}`);
+            const storageKeys = await page.evaluate(() => ({
+                local: { ...localStorage },
+                session: { ...sessionStorage },
+            }));
+            console.warn('[tokenManager] localStorage keys:', Object.keys(storageKeys.local).join(', ') || 'none');
+            console.warn('[tokenManager] sessionStorage keys:', Object.keys(storageKeys.session).join(', ') || 'none');
+
+            // Check if any value looks like a Bearer token or JWT
+            const allVals = [
+                ...Object.values(storageKeys.local),
+                ...Object.values(storageKeys.session),
+            ];
+            for (const v of allVals) {
+                if (typeof v === 'string' && v.length > 40) {
+                    const candidate = v.startsWith('Bearer ') ? v : `Bearer ${v}`;
+                    if (!capturedToken) {
+                        capturedToken = candidate;
+                        console.warn('[tokenManager] Candidate token from storage, using it.');
+                        break;
+                    }
+                }
+            }
         }
 
         if (capturedToken) {
             _cachedToken    = capturedToken;
             _tokenFetchedAt = Date.now();
+            console.warn('[tokenManager] Token cached successfully.');
         } else {
-            console.error('[tokenManager] Could not capture auth token — stands will be omitted.');
+            console.error('[tokenManager] ❌ Could not capture auth token — stands will be omitted.');
         }
 
         return capturedToken;
