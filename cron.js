@@ -8,7 +8,7 @@ dotenv.config();
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-const RUN_DURATION_MS = 4 * 60 * 1000 + 30 * 1000; // 4.5 minutes
+const RUN_DURATION_MS = 3 * 60 * 1000; // 3 minutes
 const POLL_MIN_MS = 15_000;  // 15 seconds
 const POLL_MAX_MS = 25_000;  // 25 seconds
 const ERROR_COOLDOWN_MS = 30 * 60 * 1000; // 30 min between error alerts

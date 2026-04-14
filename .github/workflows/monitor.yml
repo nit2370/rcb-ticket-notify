@@ -2,8 +2,8 @@ name: RCB Ticket Monitor
 
 on:
   schedule:
-    # Runs every 5 minutes. The script itself polls for 4.5 min inside each run.
-    # Combined: near real-time coverage with ≤20s detection window.
+    # Cron fires every 5 min; script runs for 3 min internally.
+    # Real-world GitHub delay ~7-10 min → script exits early to leave buffer.
     - cron: '*/5 * * * *'
   workflow_dispatch: # Manual trigger from GitHub UI
 
