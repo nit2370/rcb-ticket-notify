@@ -31,7 +31,9 @@ async function fetchStandPrices(eventCode) {
         const res = await fetch(`${STANDS_API}/${eventCode}`, {
             headers: {
                 'User-Agent': randomUA(),
-                'Accept': 'application/json',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Content-Type': 'application/json',
                 'Origin': 'https://shop.royalchallengers.com',
                 'Referer': 'https://shop.royalchallengers.com/',
             },
