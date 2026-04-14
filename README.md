@@ -34,14 +34,17 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Status: TICKETS AVAILABLE NOW!
 
-🆚 Match: RCB vs Sunrisers Hyderabad
-📅 Date: 28 Mar 2026
-🏟️ Venue: M. Chinnaswamy Stadium
-💰 Price: 3750 - 47000
+🆚 Match: Royal Challengers Bengaluru vs Lucknow Super Giants
+📅 Date: Wed, Apr 15, 2026 07:30 PM
+🏟️ Venue: M.Chinnaswamy Stadium, Bengaluru
+
+🎟️ Available Stands:
+  • NOTHING (R) PLATINUM LOUNGE: ₹35,000
+  • Boat C Stand: ₹3,750
 
 🔗 👉 BOOK NOW
 ━━━━━━━━━━━━━━━━━━━━━━━━
-⏰ Detected: 24 Mar 2026, 11:45:30 AM IST
+⏰ Detected: 14 Apr 2026, 04:31:05 PM IST
 
 Book immediately — tickets sell out in minutes! 🔥
 ```
@@ -77,6 +80,7 @@ Book immediately — tickets sell out in minutes! 🔥
    |---|---|
    | `TELEGRAM_BOT_TOKEN` | Your bot token from Step 1 |
    | `TELEGRAM_CHAT_ID` | Your chat ID from Step 1 |
+   | `TG_AUTH_TOKEN` | (Optional) Your authenticated Bearer token from the browser network tab to enable stand prices |
 
 ### Step 3 — Enable GitHub Actions
 
@@ -194,6 +198,7 @@ npm install
 # Create .env file
 echo "TELEGRAM_BOT_TOKEN=your_token_here" > .env
 echo "TELEGRAM_CHAT_ID=your_chat_id_here" >> .env
+echo "TG_AUTH_TOKEN=your_auth_token_here" >> .env
 
 # Run a single monitoring session
 npm start
